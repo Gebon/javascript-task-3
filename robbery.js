@@ -174,9 +174,6 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
     availableTime = intersect(availableTime, workingRange);
     var currentMoment = findConsecutiveTimeStart(availableTime, duration);
 
-    var fs = require('fs');
-    fs.writeFile('d:\\output.txt', availableTime);
-
     return {
 
         /**
