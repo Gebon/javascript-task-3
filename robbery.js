@@ -13,7 +13,7 @@ var dayToMinutes = {
     'СР': 2 * 24 * 60
 };
 
-function getTime(input, bankTimeZone) {
+function getTimeInMinutes(input, bankTimeZone) {
     var timePattern = input.match(timeRegex);
     var timeZone = parseInt(timePattern[5]);
     if (bankTimeZone === undefined) {
@@ -45,19 +45,19 @@ function intersect(a, b) {
     return result;
 }
 
-function difference(a1, a2) {
+function difference(a, b) {
     var tmpStorage = [];
     var result = [];
 
-    for (var i1 = 0; i1 < a1.length; i1++) {
-        tmpStorage[a1[i1]] = true;
+    for (var i = 0; i < a.length; i++) {
+        tmpStorage[a[i]] = true;
     }
 
-    for (var i2 = 0; i2 < a2.length; i2++) {
-        if (tmpStorage[a2[i2]]) {
-            delete tmpStorage[a2[i2]];
+    for (var j = 0; j < b.length; j++) {
+        if (tmpStorage[b[j]]) {
+            delete tmpStorage[b[j]];
         } else {
-            tmpStorage[a2[i2]] = true;
+            tmpStorage[b[j]] = true;
         }
     }
 
@@ -68,15 +68,15 @@ function difference(a1, a2) {
     return result;
 }
 
-function getUnique(arr) {
-    var uniqueChecker = {};
+function getUnique(array) {
+    var uniqueIndicator = {};
     var result = [];
-    for (var i = 0, l = arr.length; i < l; ++i) {
-        if (uniqueChecker.hasOwnProperty(arr[i])) {
+    for (var i = 0, l = array.length; i < l; ++i) {
+        if (uniqueIndicator.hasOwnProperty(array[i])) {
             continue;
         }
-        result.push(arr[i]);
-        uniqueChecker[arr[i]] = 1;
+        result.push(array[i]);
+        uniqueIndicator[array[i]] = 1;
     }
 
     return result;
@@ -104,14 +104,7 @@ function findStartIndex(allTime, laterThan) {
     return startIndex;
 }
 
-function findConsecutiveTimeStart(allTime, desiredDuration, laterThan) {
-    if (allTime.length <= desiredDuration + 1) {
-        return undefined;
-    }
-    var startIndex = findStartIndex(allTime, laterThan);
-    if (startIndex === undefined) {
-        return undefined;
-    }
+function findStartTime(allTime, startIndex, desiredDuration) {
     var start = allTime[startIndex];
     var currentDuration = 0;
     for (var i = startIndex; i < allTime.length && currentDuration !== desiredDuration; i++) {
@@ -126,6 +119,18 @@ function findConsecutiveTimeStart(allTime, desiredDuration, laterThan) {
     }
 
     return start;
+}
+
+function findConsecutiveTimeStart(allTime, desiredDuration, laterThan) {
+    if (allTime.length <= desiredDuration + 1) {
+        return undefined;
+    }
+    var startIndex = findStartIndex(allTime, laterThan);
+    if (startIndex === undefined) {
+        return undefined;
+    }
+
+    return findStartTime(allTime, startIndex, desiredDuration);
 }
 
 function normalizeTime(time) {
@@ -152,16 +157,16 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
     var busyTime = [];
     Object.keys(schedule).forEach(function (key) {
         schedule[key].forEach(function (interval) {
-            var intervalValues =
-                range(getTime(interval.from, bankTimeZone), getTime(interval.to, bankTimeZone));
+            var intervalValues = range(getTimeInMinutes(interval.from, bankTimeZone),
+                getTimeInMinutes(interval.to, bankTimeZone));
             busyTime = busyTime.concat(intervalValues);
         });
     });
     busyTime = getUnique(busyTime.sort());
     availableTime = difference(availableTime, busyTime);
 
-    var from = getTime('ПН ' + workingHours.from);
-    var to = getTime('ПН ' + workingHours.to);
+    var from = getTimeInMinutes('ПН ' + workingHours.from);
+    var to = getTimeInMinutes('ПН ' + workingHours.to);
     var workingRange = [];
     Object.keys(dayToMinutes).forEach(function (day) {
         workingRange = workingRange.concat(range(dayToMinutes[day] + from, dayToMinutes[day] + to));
