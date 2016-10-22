@@ -6,13 +6,15 @@
  */
 exports.isStar = true;
 
-var timeRegex = /(([А-Я]{2})\s)?(\d{2}):(\d{2})\+(\d+)/;
-var minutesInDay = 24 * 60;
-var dayToMinutes = {
+var TIME_REGEX = /(([А-Я]{2})\s)?(\d{2}):(\d{2})\+(\d+)/;
+var MINUTES_IN_HOUR = 60;
+var MINUTES_IN_DAY = 24 * MINUTES_IN_HOUR;
+
+var DAY_TO_MINUTES = {
     'ПН': 0,
-    'ВТ': minutesInDay,
-    'СР': 2 * minutesInDay,
-    'ЧТ': 3 * minutesInDay
+    'ВТ': MINUTES_IN_DAY,
+    'СР': 2 * MINUTES_IN_DAY,
+    'ЧТ': 3 * MINUTES_IN_DAY
 };
 
 function parseInteger(value) {
@@ -20,14 +22,14 @@ function parseInteger(value) {
 }
 
 function getTimeInMinutes(input, bankTimeZone) {
-    var timePattern = input.match(timeRegex);
+    var timePattern = input.match(TIME_REGEX);
     var timeZone = parseInteger(timePattern[5]);
     if (bankTimeZone === undefined) {
         bankTimeZone = timeZone;
     }
 
-    return (dayToMinutes[timePattern[2]] || 0) +
-        (parseInteger(timePattern[3]) + bankTimeZone - timeZone) * 60 +
+    return (DAY_TO_MINUTES[timePattern[2]] || 0) +
+        (parseInteger(timePattern[3]) + bankTimeZone - timeZone) * MINUTES_IN_HOUR +
         parseInteger(timePattern[4]);
 }
 
@@ -133,8 +135,8 @@ function getBankWorkingTime(workingHours) {
     var from = getTimeInMinutes(workingHours.from);
     var to = getTimeInMinutes(workingHours.to);
 
-    return flatten(Object.keys(dayToMinutes).map(function (day) {
-        return range(dayToMinutes[day] + from, dayToMinutes[day] + to);
+    return flatten(Object.keys(DAY_TO_MINUTES).map(function (day) {
+        return range(DAY_TO_MINUTES[day] + from, DAY_TO_MINUTES[day] + to);
     }));
 }
 
@@ -147,11 +149,11 @@ function getBankWorkingTime(workingHours) {
  * @returns {Object}
  */
 exports.getAppropriateMoment = function (schedule, duration, workingHours) {
-    var bankTimeZone = parseInteger(workingHours.from.match(timeRegex)[5]);
+    var bankTimeZone = parseInteger(workingHours.from.match(TIME_REGEX)[5]);
 
     var availableTime = intersectArrays(
         except(
-            range(dayToMinutes['ПН'], dayToMinutes['ЧТ']),
+            range(DAY_TO_MINUTES['ПН'], DAY_TO_MINUTES['ЧТ']),
             getBusyTime(schedule, bankTimeZone)
         ),
         getBankWorkingTime(workingHours)
@@ -180,13 +182,14 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             if (!this.exists()) {
                 return '';
             }
-            var hours = normalizeTime(parseInteger((currentMoment % minutesInDay) / 60));
-            var minutes = normalizeTime(currentMoment % 60);
+            var hours = normalizeTime(parseInteger((currentMoment % MINUTES_IN_DAY) /
+                MINUTES_IN_HOUR));
+            var minutes = normalizeTime(currentMoment % MINUTES_IN_HOUR);
 
             return template.replace('%HH', hours)
                 .replace('%MM', minutes)
                 .replace('%DD',
-                    Object.keys(dayToMinutes)[parseInteger(currentMoment / minutesInDay)]);
+                    Object.keys(DAY_TO_MINUTES)[parseInteger(currentMoment / MINUTES_IN_DAY)]);
         },
 
         /**
