@@ -66,9 +66,6 @@ function except(a, b) {
 function getUnique(array) {
     var result = {};
     for (var i = 0, l = array.length; i < l; ++i) {
-        if (result[array[i]]) {
-            continue;
-        }
         result[array[i]] = true;
     }
 
@@ -131,9 +128,7 @@ function findStartOfConsecutiveTimeRange(allTime, desiredDuration, laterThan) {
 }
 
 function normalizeTime(time) {
-    time = time.toString();
-
-    return (time.length === 1 ? '0' : '') + time;
+    return (time < 10 ? '0' : '') + time;
 }
 
 function flatten(arrays) {
