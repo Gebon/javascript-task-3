@@ -10,19 +10,24 @@ var timeRegex = /(([А-Я]{2})\s)?(\d{2}):(\d{2})\+(\d+)/;
 var dayToMinutes = {
     'ПН': 0,
     'ВТ': 24 * 60,
-    'СР': 2 * 24 * 60
+    'СР': 2 * 24 * 60,
+    'ЧТ': 3 * 24 * 60
 };
+
+function parseInteger(value) {
+    return parseInt(value, 10);
+}
 
 function getTimeInMinutes(input, bankTimeZone) {
     var timePattern = input.match(timeRegex);
-    var timeZone = parseInt(timePattern[5]);
+    var timeZone = parseInteger(timePattern[5]);
     if (bankTimeZone === undefined) {
         bankTimeZone = timeZone;
     }
 
-    return dayToMinutes[timePattern[2]] +
-        (parseInt(timePattern[3]) + bankTimeZone - timeZone) * 60 +
-        parseInt(timePattern[4]);
+    return (dayToMinutes[timePattern[2]] || 0) +
+        (parseInteger(timePattern[3]) + bankTimeZone - timeZone) * 60 +
+        parseInteger(timePattern[4]);
 }
 
 function intersect(a, b) {
@@ -62,7 +67,7 @@ function difference(a, b) {
     }
 
     Object.keys(tmpStorage).forEach(function (key) {
-        result.push(parseInt(key));
+        result.push(parseInteger(key));
     });
 
     return result;
@@ -142,6 +147,30 @@ function normalizeTime(time) {
     return time;
 }
 
+function getBusyTime(schedule, bankTimeZone) {
+    var busyTime = [];
+    Object.keys(schedule).forEach(function (key) {
+        schedule[key].forEach(function (interval) {
+            var intervalValues = range(getTimeInMinutes(interval.from, bankTimeZone),
+                getTimeInMinutes(interval.to, bankTimeZone));
+            busyTime = busyTime.concat(intervalValues);
+        });
+    });
+
+    return getUnique(busyTime.sort());
+}
+
+function getBankWorkingTime(workingHours) {
+    var from = getTimeInMinutes(workingHours.from);
+    var to = getTimeInMinutes(workingHours.to);
+    var workingRange = [];
+    Object.keys(dayToMinutes).forEach(function (day) {
+        workingRange = workingRange.concat(range(dayToMinutes[day] + from, dayToMinutes[day] + to));
+    });
+
+    return workingRange;
+}
+
 /**
  * @param {Object} schedule – Расписание Банды
  * @param {Number} duration - Время на ограбление в минутах
@@ -151,27 +180,16 @@ function normalizeTime(time) {
  * @returns {Object}
  */
 exports.getAppropriateMoment = function (schedule, duration, workingHours) {
-    var availableTime = range(0, 3 * 24 * 60);
-    var bankTimeZone = parseInt(workingHours.from.match(timeRegex)[5]);
+    var bankTimeZone = parseInteger(workingHours.from.match(timeRegex)[5]);
 
-    var busyTime = [];
-    Object.keys(schedule).forEach(function (key) {
-        schedule[key].forEach(function (interval) {
-            var intervalValues = range(getTimeInMinutes(interval.from, bankTimeZone),
-                getTimeInMinutes(interval.to, bankTimeZone));
-            busyTime = busyTime.concat(intervalValues);
-        });
-    });
-    busyTime = getUnique(busyTime.sort());
-    availableTime = difference(availableTime, busyTime);
+    var availableTime = intersect(
+        difference(
+            range(dayToMinutes['ПН'], dayToMinutes['ЧТ']),
+            getBusyTime(schedule, bankTimeZone)
+        ),
+        getBankWorkingTime(workingHours)
+    );
 
-    var from = getTimeInMinutes('ПН ' + workingHours.from);
-    var to = getTimeInMinutes('ПН ' + workingHours.to);
-    var workingRange = [];
-    Object.keys(dayToMinutes).forEach(function (day) {
-        workingRange = workingRange.concat(range(dayToMinutes[day] + from, dayToMinutes[day] + to));
-    });
-    availableTime = intersect(availableTime, workingRange);
     var currentMoment = findConsecutiveTimeStart(availableTime, duration);
 
     return {
@@ -195,12 +213,12 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             if (!this.exists()) {
                 return '';
             }
-            var hours = normalizeTime(parseInt((currentMoment % (24 * 60)) / 60));
+            var hours = normalizeTime(parseInteger((currentMoment % (24 * 60)) / 60));
             var minutes = normalizeTime(currentMoment % 60);
 
             return template.replace('%HH', hours)
                 .replace('%MM', minutes)
-                .replace('%DD', Object.keys(dayToMinutes)[parseInt(currentMoment / (24 * 60))]);
+                .replace('%DD', Object.keys(dayToMinutes)[parseInteger(currentMoment / (24 * 60))]);
         },
 
         /**
