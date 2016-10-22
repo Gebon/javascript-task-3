@@ -39,6 +39,12 @@ function intersectArrays(a, b) {
     });
 }
 
+/**
+ * Функция для нахождения разности массивов: A\B. Сохраняет сортировку
+ * @param {Array<T>} a - массив A из комментария
+ * @param {Array<T>} b - массив B из комментария
+ * @returns {Array<T>} - результирующий массив
+ */
 function except(a, b) {
     return a.filter(function (value) {
         return b.indexOf(value) === -1;
@@ -56,6 +62,12 @@ function getUniqueValues(array) {
     });
 }
 
+/**
+ * Функция для создания диапазона [from; to)
+ * @param {Number} from - левая граница, включается в диапазон
+ * @param {Number} to - правая граница, не включается в диапазон
+ * @returns {Array<Number>} - созданный диапазон
+ */
 function range(from, to) {
     return [].concat(Array.apply(null, Array(to - from)).map(function (_, i) {
         return from + i;
