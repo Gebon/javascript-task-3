@@ -7,11 +7,12 @@
 exports.isStar = true;
 
 var timeRegex = /(([А-Я]{2})\s)?(\d{2}):(\d{2})\+(\d+)/;
+var minutesInDay = 24 * 60;
 var dayToMinutes = {
     'ПН': 0,
-    'ВТ': 24 * 60,
-    'СР': 2 * 24 * 60,
-    'ЧТ': 3 * 24 * 60
+    'ВТ': minutesInDay,
+    'СР': 2 * minutesInDay,
+    'ЧТ': 3 * minutesInDay
 };
 
 function parseInteger(value) {
@@ -179,12 +180,13 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             if (!this.exists()) {
                 return '';
             }
-            var hours = normalizeTime(parseInteger((currentMoment % (24 * 60)) / 60));
+            var hours = normalizeTime(parseInteger((currentMoment % minutesInDay) / 60));
             var minutes = normalizeTime(currentMoment % 60);
 
             return template.replace('%HH', hours)
                 .replace('%MM', minutes)
-                .replace('%DD', Object.keys(dayToMinutes)[parseInteger(currentMoment / (24 * 60))]);
+                .replace('%DD',
+                    Object.keys(dayToMinutes)[parseInteger(currentMoment / minutesInDay)]);
         },
 
         /**
