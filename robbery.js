@@ -31,60 +31,50 @@ function getTimeInMinutes(input, bankTimeZone) {
 }
 
 function intersect(a, b) {
-    var ai = 0;
-    var bi = 0;
     var result = [];
-
-    while (ai < a.length && bi < b.length) {
-        if (a[ai] < b[bi]) {
-            ai++;
-        } else if (a[ai] > b[bi]) {
-            bi++;
+    for (var i = 0, j = 0; i < a.length && j < b.length; i++, j++) {
+        if (a[i] < b[j]) {
+            j--;
+        } else if (a[i] > b[j]) {
+            i--;
         } else {
-            result.push(a[ai]);
-            ai++;
-            bi++;
+            result.push(a[i]);
         }
     }
 
     return result;
 }
 
-function difference(a, b) {
-    var tmpStorage = [];
-    var result = [];
+function except(a, b) {
+    var result = {};
 
     for (var i = 0; i < a.length; i++) {
-        tmpStorage[a[i]] = true;
+        result[a[i]] = true;
     }
 
     for (var j = 0; j < b.length; j++) {
-        if (tmpStorage[b[j]]) {
-            delete tmpStorage[b[j]];
-        } else {
-            tmpStorage[b[j]] = true;
+        if (result[b[j]]) {
+            delete result[b[j]];
         }
     }
 
-    Object.keys(tmpStorage).forEach(function (key) {
-        result.push(parseInteger(key));
+    return Object.keys(result).map(function (key) {
+        return parseInteger(key);
     });
-
-    return result;
 }
 
 function getUnique(array) {
-    var uniqueIndicator = {};
-    var result = [];
+    var result = {};
     for (var i = 0, l = array.length; i < l; ++i) {
-        if (uniqueIndicator.hasOwnProperty(array[i])) {
+        if (result[array[i]]) {
             continue;
         }
-        result.push(array[i]);
-        uniqueIndicator[array[i]] = 1;
+        result[array[i]] = true;
     }
 
-    return result;
+    return Object.keys(result).map(function (key) {
+        return parseInteger(key);
+    });
 }
 
 function range(from, to) {
@@ -93,28 +83,30 @@ function range(from, to) {
     }));
 }
 
-function findStartIndex(allTime, laterThan) {
-    var startIndex = 0;
+function findSearchStartIndex(allTime, laterThan) {
+    var searchStartIndex = 0;
     if (laterThan !== undefined) {
-        var start = allTime[startIndex];
-        for (startIndex = 1; startIndex < allTime.length && start < laterThan; startIndex++) {
-            start = allTime[startIndex];
+        var startTime = allTime[searchStartIndex];
+        for (searchStartIndex = 1;
+            searchStartIndex < allTime.length && startTime < laterThan;
+            searchStartIndex++) {
+            startTime = allTime[searchStartIndex];
         }
-        if (start < laterThan) {
+        if (startTime < laterThan) {
             return undefined;
         }
-        startIndex -= 1;
+        searchStartIndex -= 1;
     }
 
-    return startIndex;
+    return searchStartIndex;
 }
 
-function findStartTime(allTime, startIndex, desiredDuration) {
-    var start = allTime[startIndex];
+function findStartTime(allTime, searchStartIndex, desiredDuration) {
+    var startTime = allTime[searchStartIndex];
     var currentDuration = 0;
-    for (var i = startIndex; i < allTime.length && currentDuration !== desiredDuration; i++) {
-        if (allTime[i] !== start + currentDuration) {
-            start = allTime[i];
+    for (var i = searchStartIndex; i < allTime.length && currentDuration !== desiredDuration; i++) {
+        if (allTime[i] !== startTime + currentDuration) {
+            startTime = allTime[i];
             currentDuration = 0;
         }
         currentDuration++;
@@ -123,52 +115,52 @@ function findStartTime(allTime, startIndex, desiredDuration) {
         return undefined;
     }
 
-    return start;
+    return startTime;
 }
 
-function findConsecutiveTimeStart(allTime, desiredDuration, laterThan) {
+function findStartOfConsecutiveTimeRange(allTime, desiredDuration, laterThan) {
     if (allTime.length <= desiredDuration + 1) {
         return undefined;
     }
-    var startIndex = findStartIndex(allTime, laterThan);
-    if (startIndex === undefined) {
+    var searchStartIndex = findSearchStartIndex(allTime, laterThan);
+    if (searchStartIndex === undefined) {
         return undefined;
     }
 
-    return findStartTime(allTime, startIndex, desiredDuration);
+    return findStartTime(allTime, searchStartIndex, desiredDuration);
 }
 
 function normalizeTime(time) {
     time = time.toString();
-    if (time.length === 1) {
-        time = '0' + time;
-    }
 
-    return time;
+    return (time.length === 1 ? '0' : '') + time;
 }
 
-function getBusyTime(schedule, bankTimeZone) {
-    var busyTime = [];
-    Object.keys(schedule).forEach(function (key) {
-        schedule[key].forEach(function (interval) {
-            var intervalValues = range(getTimeInMinutes(interval.from, bankTimeZone),
-                getTimeInMinutes(interval.to, bankTimeZone));
-            busyTime = busyTime.concat(intervalValues);
-        });
-    });
+function flatten(arrays) {
+    return [].concat.apply([], arrays);
+}
 
-    return getUnique(busyTime.sort());
+/**
+ * @param {Object} schedule - Расписание Банды
+ * @param {Number} bankTimeZone - Временная зона банка
+ * @returns {Array<Number>} - Времена, когда Банда занята
+ */
+function getBusyTime(schedule, bankTimeZone) {
+    return getUnique(flatten(Object.keys(schedule).map(function (key) {
+        return flatten(schedule[key].map(function (interval) {
+            return range(getTimeInMinutes(interval.from, bankTimeZone),
+                getTimeInMinutes(interval.to, bankTimeZone));
+        }));
+    })).sort());
 }
 
 function getBankWorkingTime(workingHours) {
     var from = getTimeInMinutes(workingHours.from);
     var to = getTimeInMinutes(workingHours.to);
-    var workingRange = [];
-    Object.keys(dayToMinutes).forEach(function (day) {
-        workingRange = workingRange.concat(range(dayToMinutes[day] + from, dayToMinutes[day] + to));
-    });
 
-    return workingRange;
+    return flatten(Object.keys(dayToMinutes).map(function (day) {
+        return range(dayToMinutes[day] + from, dayToMinutes[day] + to);
+    }));
 }
 
 /**
@@ -183,14 +175,14 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
     var bankTimeZone = parseInteger(workingHours.from.match(timeRegex)[5]);
 
     var availableTime = intersect(
-        difference(
+        except(
             range(dayToMinutes['ПН'], dayToMinutes['ЧТ']),
             getBusyTime(schedule, bankTimeZone)
         ),
         getBankWorkingTime(workingHours)
     );
 
-    var currentMoment = findConsecutiveTimeStart(availableTime, duration);
+    var currentMoment = findStartOfConsecutiveTimeRange(availableTime, duration);
 
     return {
 
@@ -227,7 +219,8 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
          * @returns {Boolean}
          */
         tryLater: function () {
-            var nextMoment = findConsecutiveTimeStart(availableTime, duration, currentMoment + 30);
+            var nextMoment = findStartOfConsecutiveTimeRange(availableTime,
+                duration, currentMoment + 30);
             if (nextMoment === undefined) {
                 return false;
             }
