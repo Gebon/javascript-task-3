@@ -46,40 +46,40 @@ function intersect(a, b) {
 }
 
 function difference(a1, a2) {
-    var a = [];
-    var diff = [];
+    var tmpStorage = [];
+    var result = [];
 
     for (var i1 = 0; i1 < a1.length; i1++) {
-        a[a1[i1]] = true;
+        tmpStorage[a1[i1]] = true;
     }
 
     for (var i2 = 0; i2 < a2.length; i2++) {
-        if (a[a2[i2]]) {
-            delete a[a2[i2]];
+        if (tmpStorage[a2[i2]]) {
+            delete tmpStorage[a2[i2]];
         } else {
-            a[a2[i2]] = true;
+            tmpStorage[a2[i2]] = true;
         }
     }
 
-    Object.keys(a).forEach(function (key) {
-        diff.push(parseInt(key));
+    Object.keys(tmpStorage).forEach(function (key) {
+        result.push(parseInt(key));
     });
 
-    return diff;
+    return result;
 }
 
 function getUnique(arr) {
-    var u = {};
-    var a = [];
+    var uniqueChecker = {};
+    var result = [];
     for (var i = 0, l = arr.length; i < l; ++i) {
-        if (u.hasOwnProperty(arr[i])) {
+        if (uniqueChecker.hasOwnProperty(arr[i])) {
             continue;
         }
-        a.push(arr[i]);
-        u[arr[i]] = 1;
+        result.push(arr[i]);
+        uniqueChecker[arr[i]] = 1;
     }
 
-    return a;
+    return result;
 }
 
 function range(from, to) {
@@ -90,34 +90,38 @@ function range(from, to) {
 
 function findStartIndex(allTime, laterThan) {
     var startIndex = 0;
-    var start = allTime[startIndex];
     if (laterThan !== undefined) {
+        var start = allTime[startIndex];
         for (startIndex = 1; startIndex < allTime.length && start < laterThan; startIndex++) {
             start = allTime[startIndex];
         }
         if (start < laterThan) {
             return undefined;
         }
+        startIndex -= 1;
     }
 
-    return startIndex - 1;
+    return startIndex;
 }
 
-function findConsecutiveTimeStart(allTime, duration, laterThan) {
-    if (allTime.length <= duration + 1) {
+function findConsecutiveTimeStart(allTime, desiredDuration, laterThan) {
+    if (allTime.length <= desiredDuration + 1) {
         return undefined;
     }
     var startIndex = findStartIndex(allTime, laterThan);
+    if (startIndex === undefined) {
+        return undefined;
+    }
     var start = allTime[startIndex];
     var currentDuration = 0;
-    for (var i = startIndex; i < allTime.length && currentDuration !== duration; i++) {
+    for (var i = startIndex; i < allTime.length && currentDuration !== desiredDuration; i++) {
         if (allTime[i] !== start + currentDuration) {
             start = allTime[i];
             currentDuration = 0;
         }
         currentDuration++;
     }
-    if (currentDuration < duration) {
+    if (currentDuration < desiredDuration) {
         return undefined;
     }
 
