@@ -30,40 +30,19 @@ function getTimeInMinutes(input, bankTimeZone) {
         parseInteger(timePattern[4]);
 }
 
-function intersect(a, b) {
-    var result = [];
-    for (var i = 0, j = 0; i < a.length && j < b.length; i++, j++) {
-        if (a[i] < b[j]) {
-            j--;
-        } else if (a[i] > b[j]) {
-            i--;
-        } else {
-            result.push(a[i]);
-        }
-    }
-
-    return result;
-}
-
-function except(a, b) {
-    var result = {};
-
-    for (var i = 0; i < a.length; i++) {
-        result[a[i]] = true;
-    }
-
-    for (var j = 0; j < b.length; j++) {
-        if (result[b[j]]) {
-            delete result[b[j]];
-        }
-    }
-
-    return Object.keys(result).map(function (key) {
-        return parseInteger(key);
+function intersectArrays(a, b) {
+    return a.filter(function (value) {
+        return b.indexOf(value) !== -1;
     });
 }
 
-function getUnique(array) {
+function except(a, b) {
+    return a.filter(function (value) {
+        return b.indexOf(value) === -1;
+    });
+}
+
+function getUniqueValues(array) {
     var result = {};
     for (var i = 0, l = array.length; i < l; ++i) {
         result[array[i]] = true;
@@ -141,7 +120,7 @@ function flatten(arrays) {
  * @returns {Array<Number>} - Времена, когда Банда занята
  */
 function getBusyTime(schedule, bankTimeZone) {
-    return getUnique(flatten(Object.keys(schedule).map(function (key) {
+    return getUniqueValues(flatten(Object.keys(schedule).map(function (key) {
         return flatten(schedule[key].map(function (interval) {
             return range(getTimeInMinutes(interval.from, bankTimeZone),
                 getTimeInMinutes(interval.to, bankTimeZone));
@@ -169,7 +148,7 @@ function getBankWorkingTime(workingHours) {
 exports.getAppropriateMoment = function (schedule, duration, workingHours) {
     var bankTimeZone = parseInteger(workingHours.from.match(timeRegex)[5]);
 
-    var availableTime = intersect(
+    var availableTime = intersectArrays(
         except(
             range(dayToMinutes['ПН'], dayToMinutes['ЧТ']),
             getBusyTime(schedule, bankTimeZone)
@@ -214,8 +193,9 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
          * @returns {Boolean}
          */
         tryLater: function () {
+            var thirtyMinutes = 30;
             var nextMoment = findStartOfConsecutiveTimeRange(availableTime,
-                duration, currentMoment + 30);
+                duration, currentMoment + thirtyMinutes);
             if (nextMoment === undefined) {
                 return false;
             }
