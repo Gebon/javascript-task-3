@@ -114,7 +114,7 @@ function findStartTime(allTime, searchStartIndex, desiredDuration) {
 }
 
 function findStartOfConsecutiveTimeRange(allTime, desiredDuration, laterThan) {
-    if (allTime.length <= desiredDuration + 1) {
+    if (allTime.length < desiredDuration) {
         return undefined;
     }
     var searchStartIndex = findSearchStartIndex(allTime, laterThan);
