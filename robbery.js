@@ -40,15 +40,21 @@ function intersectArrays(a, b) {
 }
 
 /**
- * Функция для нахождения разности массивов: A\B. Сохраняет сортировку
+ * Функция для нахождения разности массивов: A\B
  * @param {Array<T>} a - массив A из комментария
  * @param {Array<T>} b - массив B из комментария
  * @returns {Array<T>} - результирующий массив
  */
 function except(a, b) {
-    return a.filter(function (value) {
-        return b.indexOf(value) === -1;
-    });
+    var result = {};
+    for (var i = 0; i < a.length; ++i) {
+        result[a[i]] = true;
+    }
+    for (var j = 0; j < b.length; ++j) {
+        delete result[b[j]];
+    }
+
+    return Object.keys(result).map(parseInteger);
 }
 
 function getUniqueValues(array) {
@@ -57,9 +63,7 @@ function getUniqueValues(array) {
         result[array[i]] = true;
     }
 
-    return Object.keys(result).map(function (key) {
-        return parseInteger(key);
-    });
+    return Object.keys(result).map(parseInteger);
 }
 
 /**
@@ -140,7 +144,7 @@ function getBusyTime(schedule, bankTimeZone) {
             return range(getTimeInMinutes(interval.from, bankTimeZone),
                 getTimeInMinutes(interval.to, bankTimeZone));
         }));
-    })).sort());
+    })));
 }
 
 function getBankWorkingTime(workingHours) {
