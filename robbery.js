@@ -6,6 +6,8 @@
  */
 exports.isStar = true;
 
+var TimeRange = require('./TimeRange.js');
+
 var TIME_REGEX = /(([А-Я]{2})\s)?(\d{2}):(\d{2})\+(\d+)/;
 var MINUTES_IN_HOUR = 60;
 var MINUTES_IN_DAY = 24 * MINUTES_IN_HOUR;
@@ -33,96 +35,22 @@ function getTimeInMinutes(input, bankTimeZone) {
         parseInteger(timePattern[4]);
 }
 
-function intersectArrays(a, b) {
-    return a.filter(function (value) {
-        return b.indexOf(value) !== -1;
-    });
-}
-
-/**
- * Функция для нахождения разности массивов: A\B
- * @param {Array<T>} a - массив A из комментария
- * @param {Array<T>} b - массив B из комментария
- * @returns {Array<T>} - результирующий массив
- */
-function except(a, b) {
-    var result = {};
-    for (var i = 0; i < a.length; ++i) {
-        result[a[i]] = true;
-    }
-    for (var j = 0; j < b.length; ++j) {
-        delete result[b[j]];
-    }
-
-    return Object.keys(result).map(parseInteger);
-}
-
-function getUniqueValues(array) {
-    var result = {};
-    for (var i = 0, l = array.length; i < l; ++i) {
-        result[array[i]] = true;
-    }
-
-    return Object.keys(result).map(parseInteger);
-}
-
-/**
- * Функция для создания диапазона [from; to)
- * @param {Number} from - левая граница, включается в диапазон
- * @param {Number} to - правая граница, не включается в диапазон
- * @returns {Array<Number>} - созданный диапазон
- */
-function range(from, to) {
-    return [].concat(Array.apply(null, Array(to - from)).map(function (_, i) {
-        return from + i;
-    }));
-}
-
-function findSearchStartIndex(allTime, laterThan) {
-    var searchStartIndex = 0;
+function findStartOfConsecutiveTimeRange(allTime, desiredDuration, laterThan) {
+    var timeRange = allTime[0];
     if (laterThan !== undefined) {
-        var startTime = allTime[searchStartIndex];
-        for (searchStartIndex = 1;
-            searchStartIndex < allTime.length && startTime < laterThan;
-            searchStartIndex++) {
-            startTime = allTime[searchStartIndex];
+        for (var timeRangeIndex = 1;
+            timeRangeIndex < allTime.length && timeRange.to - laterThan < desiredDuration;
+            timeRangeIndex++) {
+            timeRange = allTime[timeRangeIndex];
         }
-        if (startTime < laterThan) {
+        if (timeRange.to - laterThan < desiredDuration) {
             return undefined;
         }
-        searchStartIndex -= 1;
+        laterThan = Math.max(laterThan, timeRange.from);
+        timeRange = new TimeRange(laterThan, laterThan + desiredDuration);
     }
 
-    return searchStartIndex;
-}
-
-function findStartTime(allTime, searchStartIndex, desiredDuration) {
-    var startTime = allTime[searchStartIndex];
-    var currentDuration = 0;
-    for (var i = searchStartIndex; i < allTime.length && currentDuration !== desiredDuration; i++) {
-        if (allTime[i] !== startTime + currentDuration) {
-            startTime = allTime[i];
-            currentDuration = 0;
-        }
-        currentDuration++;
-    }
-    if (currentDuration < desiredDuration) {
-        return undefined;
-    }
-
-    return startTime;
-}
-
-function findStartOfConsecutiveTimeRange(allTime, desiredDuration, laterThan) {
-    if (allTime.length < desiredDuration) {
-        return undefined;
-    }
-    var searchStartIndex = findSearchStartIndex(allTime, laterThan);
-    if (searchStartIndex === undefined) {
-        return undefined;
-    }
-
-    return findStartTime(allTime, searchStartIndex, desiredDuration);
+    return timeRange;
 }
 
 function normalizeTime(time) {
@@ -139,11 +67,11 @@ function flatten(arrays) {
  * @returns {Array<Number>} - Времена, когда Банда занята
  */
 function getBusyTime(schedule, bankTimeZone) {
-    return getUniqueValues(flatten(Object.keys(schedule).map(function (key) {
-        return flatten(schedule[key].map(function (interval) {
-            return range(getTimeInMinutes(interval.from, bankTimeZone),
+    return TimeRange.unifyTimeRanges(flatten(Object.keys(schedule).map(function (key) {
+        return schedule[key].map(function (interval) {
+            return new TimeRange(getTimeInMinutes(interval.from, bankTimeZone),
                 getTimeInMinutes(interval.to, bankTimeZone));
-        }));
+        });
     })));
 }
 
@@ -151,9 +79,9 @@ function getBankWorkingTime(workingHours) {
     var from = getTimeInMinutes(workingHours.from);
     var to = getTimeInMinutes(workingHours.to);
 
-    return flatten(Object.keys(DAY_TO_MINUTES).map(function (day) {
-        return range(DAY_TO_MINUTES[day] + from, DAY_TO_MINUTES[day] + to);
-    }));
+    return Object.keys(DAY_TO_MINUTES).map(function (day) {
+        return new TimeRange(DAY_TO_MINUTES[day] + from, DAY_TO_MINUTES[day] + to);
+    });
 }
 
 /**
@@ -167,13 +95,14 @@ function getBankWorkingTime(workingHours) {
 exports.getAppropriateMoment = function (schedule, duration, workingHours) {
     var bankTimeZone = parseInteger(workingHours.from.match(TIME_REGEX)[5]);
 
-    var availableTime = intersectArrays(
-        except(
-            range(DAY_TO_MINUTES['ПН'], DAY_TO_MINUTES['ЧТ']),
-            getBusyTime(schedule, bankTimeZone)
-        ),
+    var allTime = new TimeRange(DAY_TO_MINUTES['ПН'], DAY_TO_MINUTES['ЧТ']);
+    var availableTime = TimeRange.intersectTimeRanges(
+        allTime.exceptTimeRanges(getBusyTime(schedule, bankTimeZone)),
         getBankWorkingTime(workingHours)
-    );
+    ).filter(function (timeRange) {
+        return (timeRange.to - timeRange.from) >= duration;
+    })
+    .sort(TimeRange.comparator);
 
     var currentMoment = findStartOfConsecutiveTimeRange(availableTime, duration);
 
@@ -198,14 +127,14 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             if (!this.exists()) {
                 return '';
             }
-            var hours = normalizeTime(parseInteger((currentMoment % MINUTES_IN_DAY) /
+            var hours = normalizeTime(parseInteger((currentMoment.from % MINUTES_IN_DAY) /
                 MINUTES_IN_HOUR));
-            var minutes = normalizeTime(currentMoment % MINUTES_IN_HOUR);
+            var minutes = normalizeTime(currentMoment.from % MINUTES_IN_HOUR);
 
             return template.replace('%HH', hours)
                 .replace('%MM', minutes)
                 .replace('%DD',
-                    Object.keys(DAY_TO_MINUTES)[parseInteger(currentMoment / MINUTES_IN_DAY)]);
+                    Object.keys(DAY_TO_MINUTES)[parseInteger(currentMoment.from / MINUTES_IN_DAY)]);
         },
 
         /**
@@ -215,7 +144,7 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
          */
         tryLater: function () {
             var nextMoment = findStartOfConsecutiveTimeRange(availableTime,
-                duration, currentMoment + MINUTES_IN_HOUR / 2);
+                duration, currentMoment.from + MINUTES_IN_HOUR / 2);
             if (nextMoment === undefined) {
                 return false;
             }
