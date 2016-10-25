@@ -33,12 +33,12 @@ TimeRange.prototype.exceptTimeRanges = function (others) {
     return result.sort(TimeRange.comparator);
 };
 
-TimeRange.prototype.lefterThan = function (other) {
+TimeRange.prototype.toTheLeftFrom = function (other) {
     return this.to <= other.from;
 };
 
 TimeRange.prototype.intersectsWith = function (other) {
-    return !(this.lefterThan(other) || other.lefterThan(this));
+    return !(this.toTheLeftFrom(other) || other.toTheLeftFrom(this));
 };
 
 TimeRange.prototype.intersect = function (other) {
@@ -59,10 +59,10 @@ TimeRange.intersectTimeRanges = function (a, b) {
 
     var result = [];
     for (var i = 0, j = 0; i < a.length && j < b.length;) {
-        if (a[i].lefterThan(b[j])) {
+        if (a[i].toTheLeftFrom(b[j])) {
             i++;
             continue;
-        } else if (b[j].lefterThan(a[i])) {
+        } else if (b[j].toTheLeftFrom(a[i])) {
             j++;
             continue;
         }
