@@ -12,14 +12,14 @@ TimeRange.prototype.exceptTimeRange = function (other) {
         return [this];
     }
     var result = [];
-    if (other.to < this.to) {
-        result.push(new TimeRange(other.to, this.to));
-    }
     if (this.from < other.from) {
         result.push(new TimeRange(this.from, other.from));
     }
+    if (other.to < this.to) {
+        result.push(new TimeRange(other.to, this.to));
+    }
 
-    return result.sort(TimeRange.comparator);
+    return result;
 };
 
 TimeRange.prototype.exceptTimeRanges = function (others) {
@@ -62,7 +62,8 @@ TimeRange.intersectTimeRanges = function (a, b) {
         if (a[i].toTheLeftFrom(b[j])) {
             i++;
             continue;
-        } else if (b[j].toTheLeftFrom(a[i])) {
+        }
+        if (b[j].toTheLeftFrom(a[i])) {
             j++;
             continue;
         }
