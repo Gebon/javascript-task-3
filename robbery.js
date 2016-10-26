@@ -143,6 +143,9 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
          * @returns {Boolean}
          */
         tryLater: function () {
+            if (!this.exists()) {
+                return false;
+            }
             var nextMoment = findStartOfConsecutiveTimeRange(availableTime,
                 duration, currentMoment.from + MINUTES_IN_HOUR / 2);
             if (nextMoment === undefined) {
