@@ -77,22 +77,6 @@ TimeRange.intersectTimeRanges = function (a, b) {
     return result;
 };
 
-TimeRange.unifyTimeRanges = function (timeRanges) {
-    timeRanges = timeRanges.sort(TimeRange.comparator);
-    var result = [];
-    var i = 1;
-    for (; i < timeRanges.length; i++) {
-        if (timeRanges[i - 1].to >= timeRanges[i].from) {
-            timeRanges[i] = new TimeRange(timeRanges[i - 1].from, timeRanges[i].to);
-        } else {
-            result.push(timeRanges[i - 1]);
-        }
-    }
-    result.push(timeRanges[i - 1]);
-
-    return result;
-};
-
 function flatten(arrays) {
     return [].concat.apply([], arrays);
 }

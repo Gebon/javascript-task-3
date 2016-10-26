@@ -67,12 +67,12 @@ function flatten(arrays) {
  * @returns {Array<Number>} - Времена, когда Банда занята
  */
 function getBusyTime(schedule, bankTimeZone) {
-    return TimeRange.unifyTimeRanges(flatten(Object.keys(schedule).map(function (key) {
+    return flatten(Object.keys(schedule).map(function (key) {
         return schedule[key].map(function (interval) {
             return new TimeRange(getTimeInMinutes(interval.from, bankTimeZone),
                 getTimeInMinutes(interval.to, bankTimeZone));
         });
-    })));
+    }));
 }
 
 function getBankWorkingTime(workingHours) {
