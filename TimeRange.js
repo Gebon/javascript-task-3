@@ -49,6 +49,10 @@ TimeRange.prototype.intersect = function (other) {
     return new TimeRange(Math.max(this.from, other.from), Math.min(this.to, other.to));
 };
 
+TimeRange.prototype.getDuration = function () {
+    return this.to - this.from;
+};
+
 TimeRange.comparator = function (a, b) {
     return a.from - b.from;
 };

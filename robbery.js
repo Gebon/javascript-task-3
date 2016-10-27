@@ -35,7 +35,7 @@ function getTimeInMinutes(input, bankTimeZone) {
         parseInteger(timePattern[4]);
 }
 
-function findStartOfConsecutiveTimeRange(allTime, desiredDuration, laterThan) {
+function findAppropriateTimeRange(allTime, desiredDuration, laterThan) {
     var timeRange = allTime[0];
     if (laterThan !== undefined) {
         for (var timeRangeIndex = 1;
@@ -66,7 +66,7 @@ function flatten(arrays) {
  * @param {Number} bankTimeZone - Временная зона банка
  * @returns {Array<Number>} - Времена, когда Банда занята
  */
-function getBusyTime(schedule, bankTimeZone) {
+function getBusyTimeRanges(schedule, bankTimeZone) {
     return flatten(Object.keys(schedule).map(function (key) {
         return schedule[key].map(function (interval) {
             return new TimeRange(getTimeInMinutes(interval.from, bankTimeZone),
@@ -75,7 +75,7 @@ function getBusyTime(schedule, bankTimeZone) {
     }));
 }
 
-function getBankWorkingTime(workingHours) {
+function getBankWorkingTimeRanges(workingHours) {
     var from = getTimeInMinutes(workingHours.from);
     var to = getTimeInMinutes(workingHours.to);
 
@@ -95,16 +95,18 @@ function getBankWorkingTime(workingHours) {
 exports.getAppropriateMoment = function (schedule, duration, workingHours) {
     var bankTimeZone = parseInteger(workingHours.from.match(TIME_REGEX)[5]);
 
-    var allTime = new TimeRange(DAY_TO_MINUTES['ПН'], DAY_TO_MINUTES['ЧТ']);
-    var availableTime = TimeRange.intersectTimeRanges(
-        allTime.exceptTimeRanges(getBusyTime(schedule, bankTimeZone)),
-        getBankWorkingTime(workingHours)
-    ).filter(function (timeRange) {
-        return (timeRange.to - timeRange.from) >= duration;
-    })
-    .sort(TimeRange.comparator);
+    var allTimeRange = new TimeRange(DAY_TO_MINUTES['ПН'], DAY_TO_MINUTES['ЧТ']);
+    var availableTimeRanges = TimeRange.intersectTimeRanges(
+        allTimeRange.exceptTimeRanges(getBusyTimeRanges(schedule, bankTimeZone)),
+        getBankWorkingTimeRanges(workingHours)
+    );
+    var appropriateTimeRanges = availableTimeRanges
+        .filter(function (timeRange) {
+            return timeRange.getDuration() >= duration;
+        })
+        .sort(TimeRange.comparator);
 
-    var currentMoment = findStartOfConsecutiveTimeRange(availableTime, duration);
+    var currentMoment = findAppropriateTimeRange(appropriateTimeRanges, duration);
 
     return {
 
@@ -146,7 +148,7 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             if (!this.exists()) {
                 return false;
             }
-            var nextMoment = findStartOfConsecutiveTimeRange(availableTime,
+            var nextMoment = findAppropriateTimeRange(appropriateTimeRanges,
                 duration, currentMoment.from + MINUTES_IN_HOUR / 2);
             if (nextMoment === undefined) {
                 return false;
