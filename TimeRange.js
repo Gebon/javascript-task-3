@@ -3,8 +3,6 @@
 function TimeRange(from, to) {
     this.from = from;
     this.to = to;
-
-    return this;
 }
 
 TimeRange.prototype.exceptTimeRange = function (other) {
