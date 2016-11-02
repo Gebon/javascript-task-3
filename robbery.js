@@ -7,22 +7,34 @@
 exports.isStar = true;
 
 var TimeRange = require('./TimeRange.js');
-var utils = require('./utils.js');
+var arrayUtils = require('./arrayUtils.js');
 
-var TIME_REGEX = /(?:([ПН|ВТ|СР|ЧТ|ПТ|СБ|ВС]{2})\s)?(\d{2}):(\d{2})\+(\d{1,2})/;
 var MINUTES_IN_HOUR = 60;
 var MINUTES_IN_DAY = 24 * MINUTES_IN_HOUR;
 var DAYS_OF_WEEK = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
 
+/**
+ * @param {Number} dayOfWeek
+ * @returns {Number} - день недели в минутах с начала недели
+ */
 function convertDayToMinutes(dayOfWeek) {
     return DAYS_OF_WEEK.indexOf(dayOfWeek) * MINUTES_IN_DAY;
 }
 
+/**
+ * @param {Number} hours
+ * @returns {Number} - часы в минутах с начала дня
+ */
 function convertHoursToMinutes(hours) {
     return hours * MINUTES_IN_HOUR;
 }
 
+/**
+ * @param {String} dateAsString - входная дата в виде строки
+ * @returns {Object}
+ */
 function parseDate(dateAsString) {
+    var TIME_REGEX = /(?:([ПН|ВТ|СР|ЧТ|ПТ|СБ|ВС]{2})\s)?(\d{2}):(\d{2})\+(\d{1,2})/;
     var timePattern = dateAsString.match(TIME_REGEX);
 
     return {
@@ -33,35 +45,50 @@ function parseDate(dateAsString) {
     };
 }
 
-function getTimeInMinutes(input, bankTimeZone) {
+/**
+ * @param {String} input - входная дата в виде строки
+ * @param {Number} targetTimeZone - целевая временная зона
+ * @returns {Number} - время в минутх с начала недели, соответствующее входной дате
+ */
+function getTimeInMinutes(input, targetTimeZone) {
     var date = parseDate(input);
-    if (bankTimeZone === undefined) {
-        bankTimeZone = date.timeZone;
+    if (targetTimeZone === undefined) {
+        targetTimeZone = date.timeZone;
     }
 
     return convertDayToMinutes(date.dayOfWeek) +
-        convertHoursToMinutes(date.hours + bankTimeZone - date.timeZone) +
+        convertHoursToMinutes(date.hours + targetTimeZone - date.timeZone) +
         date.minutes;
 }
 
+/**
+ * @param {Array<TimeRange>} allTime - все доступные временные интервалы
+ * @param {Number} desiredDuration - длительность временного интервала
+ * @param {Number} minutesLater - время в минутах
+ * @returns {TimeRange | null} - найденный временной интервал, либо null, если интервал не найден
+ */
 function findAppropriateTimeRange(allTime, desiredDuration, minutesLater) {
     var timeRange = allTime[0];
     if (minutesLater && timeRange) {
-        var tmpTimeRange = TimeRange.fromAnother(timeRange);
-        tmpTimeRange.from += minutesLater;
-        if (tmpTimeRange.duration >= desiredDuration) {
-            allTime[0] = tmpTimeRange;
+        var candidateTimeRange = TimeRange.fromAnother(timeRange);
+        candidateTimeRange.from += minutesLater;
+        if (candidateTimeRange.duration >= desiredDuration) {
+            allTime[0] = candidateTimeRange;
         } else {
             allTime.shift();
         }
         timeRange = allTime[0];
     }
 
-    return timeRange;
+    return timeRange || null;
 }
 
-function formatNumber(time) {
-    return (time < 10 ? '0' : '') + time;
+/**
+ * @param {Number} number - число для форматирования
+ * @returns {String} - форматированное время
+ */
+function formatNumber(number) {
+    return (number < 10 ? '0' : '') + number;
 }
 
 /**
@@ -70,14 +97,24 @@ function formatNumber(time) {
  * @returns {Array<Number>} - Времена, когда Банда занята
  */
 function getBusyTimeRanges(schedule, bankTimeZone) {
-    return utils.flatten(Object.keys(schedule).map(function (key) {
-        return schedule[key].map(function (interval) {
-            return new TimeRange(getTimeInMinutes(interval.from, bankTimeZone),
-                getTimeInMinutes(interval.to, bankTimeZone));
-        });
-    }));
+    function convertScheduleIntervalToTimeRange(interval) {
+        return new TimeRange(getTimeInMinutes(interval.from, bankTimeZone),
+            getTimeInMinutes(interval.to, bankTimeZone));
+    }
+
+    function convertScheduleEntryToTimeRanges(key) {
+        return schedule[key].map(convertScheduleIntervalToTimeRange);
+    }
+
+    var result = Object.keys(schedule).map(convertScheduleEntryToTimeRanges);
+
+    return arrayUtils.flatten(result);
 }
 
+/**
+ * @param {Object} workingHours - Время работы банка
+ * @returns {Array<TimeRange>} - Время работы банка, выраженное с помощью TimeRange
+ */
 function getBankWorkingTimeRanges(workingHours) {
     var from = getTimeInMinutes(workingHours.from);
     var to = getTimeInMinutes(workingHours.to);
@@ -118,7 +155,7 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
          * @returns {Boolean}
          */
         exists: function () {
-            return currentMoment !== undefined;
+            return currentMoment !== null;
         },
 
         /**

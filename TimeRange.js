@@ -1,6 +1,6 @@
 'use strict';
 
-var utils = require('./utils.js');
+var arrayUtils = require('./arrayUtils.js');
 
 function TimeRange(from, to) {
     this.from = from;
@@ -11,57 +11,57 @@ TimeRange.fromAnother = function (timeRange) {
     return new TimeRange(timeRange.from, timeRange.to);
 };
 
-TimeRange.prototype = {
-    get duration() {
+Object.defineProperty(TimeRange.prototype, 'duration', {
+    get: function () {
         return this.to - this.from;
     }
-};
+});
 
-TimeRange.prototype.exceptTimeRange = function (other) {
-    if (!this.isIntersectedWith(other)) {
+TimeRange.prototype.exceptTimeRange = function (range) {
+    if (!this.isIntersectedWith(range)) {
         return [this];
     }
     var result = [];
-    if (this.from < other.from) {
-        result.push(new TimeRange(this.from, other.from));
+    if (this.from < range.from) {
+        result.push(new TimeRange(this.from, range.from));
     }
-    if (other.to < this.to) {
-        result.push(new TimeRange(other.to, this.to));
+    if (range.to < this.to) {
+        result.push(new TimeRange(range.to, this.to));
     }
 
     return result;
 };
 
-TimeRange.prototype.exceptTimeRanges = function (others) {
-    return TimeRange.getSortedTimeRanges(others.reduce(function (acc, excludedTimeRange) {
-        return utils.flatten(acc.map(function (currentTimeRange) {
+TimeRange.prototype.exceptTimeRanges = function (excludedTimeRanges) {
+    var result = excludedTimeRanges.reduce(function (acc, excludedTimeRange) {
+        return arrayUtils.flatten(acc.map(function (currentTimeRange) {
             return currentTimeRange.exceptTimeRange(excludedTimeRange);
         }));
-    }, [this]));
+    }, [this]);
+
+    return TimeRange.getSortedTimeRanges(result);
 };
 
-TimeRange.prototype.toTheLeftFrom = function (other) {
-    return this.to <= other.from;
+TimeRange.prototype.toTheLeftFrom = function (range) {
+    return this.to <= range.from;
 };
 
-TimeRange.prototype.isIntersectedWith = function (other) {
-    return !(this.toTheLeftFrom(other) || other.toTheLeftFrom(this));
+TimeRange.prototype.isIntersectedWith = function (range) {
+    return !this.toTheLeftFrom(range) && !range.toTheLeftFrom(this);
 };
 
-TimeRange.prototype.intersectWith = function (other) {
-    if (!this.isIntersectedWith(other)) {
+TimeRange.prototype.intersectWith = function (range) {
+    if (!this.isIntersectedWith(range)) {
         return;
     }
 
-    return new TimeRange(Math.max(this.from, other.from), Math.min(this.to, other.to));
-};
-
-TimeRange.comparator = function (a, b) {
-    return a.from - b.from;
+    return new TimeRange(Math.max(this.from, range.from), Math.min(this.to, range.to));
 };
 
 TimeRange.getSortedTimeRanges = function (timeRanges) {
-    return timeRanges.concat().sort(TimeRange.comparator);
+    return [].concat(timeRanges).sort(function (a, b) {
+        return a.from - b.from;
+    });
 };
 
 TimeRange.intersectTimeRanges = function (a, b) {
