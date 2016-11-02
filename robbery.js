@@ -62,28 +62,6 @@ function getTimeInMinutes(input, targetTimeZone) {
 }
 
 /**
- * @param {Array<TimeRange>} allTime - все доступные временные интервалы
- * @param {Number} desiredDuration - длительность временного интервала
- * @param {Number} minutesLater - время в минутах
- * @returns {TimeRange | null} - найденный временной интервал, либо null, если интервал не найден
- */
-function findAppropriateTimeRange(allTime, desiredDuration, minutesLater) {
-    var timeRange = allTime[0];
-    if (minutesLater && timeRange) {
-        var candidateTimeRange = TimeRange.fromAnother(timeRange);
-        candidateTimeRange.from += minutesLater;
-        if (candidateTimeRange.duration >= desiredDuration) {
-            allTime[0] = candidateTimeRange;
-        } else {
-            allTime.shift();
-        }
-        timeRange = allTime[0];
-    }
-
-    return timeRange || null;
-}
-
-/**
  * @param {Number} number - число для форматирования
  * @returns {String} - форматированное время
  */
@@ -146,7 +124,8 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             return timeRange.duration >= duration;
         }));
 
-    var currentMoment = findAppropriateTimeRange(appropriateTimeRanges, duration);
+    var currentTimeRangeIndex = 0;
+    var currentMoment = appropriateTimeRanges[currentTimeRangeIndex] || null;
 
     return {
 
@@ -189,8 +168,17 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             if (!this.exists()) {
                 return false;
             }
-            var nextMoment = findAppropriateTimeRange(appropriateTimeRanges,
-                duration, MINUTES_IN_HOUR / 2);
+
+            var nextMoment;
+            var minutesLater = MINUTES_IN_HOUR / 2;
+            var candidateTimeRange = TimeRange.fromAnother(currentMoment);
+            candidateTimeRange.from += minutesLater;
+            if (candidateTimeRange.duration >= duration) {
+                nextMoment = candidateTimeRange;
+            } else {
+                nextMoment = appropriateTimeRanges[++currentTimeRangeIndex] || null;
+            }
+
             if (!nextMoment) {
                 return false;
             }
