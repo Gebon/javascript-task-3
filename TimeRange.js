@@ -18,7 +18,7 @@ TimeRange.prototype = {
 };
 
 TimeRange.prototype.exceptTimeRange = function (other) {
-    if (!this.intersectsWith(other)) {
+    if (!this.isIntersectedWith(other)) {
         return [this];
     }
     var result = [];
@@ -44,12 +44,12 @@ TimeRange.prototype.toTheLeftFrom = function (other) {
     return this.to <= other.from;
 };
 
-TimeRange.prototype.intersectsWith = function (other) {
+TimeRange.prototype.isIntersectedWith = function (other) {
     return !(this.toTheLeftFrom(other) || other.toTheLeftFrom(this));
 };
 
-TimeRange.prototype.intersect = function (other) {
-    if (!this.intersectsWith(other)) {
+TimeRange.prototype.intersectWith = function (other) {
+    if (!this.isIntersectedWith(other)) {
         return;
     }
 
@@ -78,7 +78,7 @@ TimeRange.intersectTimeRanges = function (a, b) {
             j++;
             continue;
         }
-        result.push(a[i].intersect(b[j]));
+        result.push(a[i].intersectWith(b[j]));
         if (a[i].to < b[j].to) {
             i++;
         } else {
