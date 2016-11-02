@@ -21,14 +21,11 @@ TimeRange.prototype.exceptTimeRange = function (other) {
 };
 
 TimeRange.prototype.exceptTimeRanges = function (others) {
-    var result = [this];
-    others.forEach(function (excludedTimeRange) {
-        result = flatten(result.map(function (currentTimeRange) {
+    return TimeRange.sortTimeRanges(others.reduce(function (acc, excludedTimeRange) {
+        return flatten(acc.map(function (currentTimeRange) {
             return currentTimeRange.exceptTimeRange(excludedTimeRange);
         }));
-    });
-
-    return result.sort(TimeRange.comparator);
+    }, [this]));
 };
 
 TimeRange.prototype.toTheLeftFrom = function (other) {
@@ -55,9 +52,13 @@ TimeRange.comparator = function (a, b) {
     return a.from - b.from;
 };
 
+TimeRange.sortTimeRanges = function (timeRanges) {
+    return timeRanges.concat().sort(TimeRange.comparator);
+};
+
 TimeRange.intersectTimeRanges = function (a, b) {
-    a = a.sort(TimeRange.comparator);
-    b = b.sort(TimeRange.comparator);
+    a = TimeRange.sortTimeRanges(a);
+    b = TimeRange.sortTimeRanges(b);
 
     var result = [];
     for (var i = 0, j = 0; i < a.length && j < b.length;) {
