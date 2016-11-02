@@ -42,12 +42,8 @@ TimeRange.prototype.exceptTimeRanges = function (excludedTimeRanges) {
     return TimeRange.getSortedTimeRanges(result);
 };
 
-TimeRange.prototype.toTheLeftFrom = function (range) {
-    return this.to <= range.from;
-};
-
 TimeRange.prototype.isIntersectedWith = function (range) {
-    return !this.toTheLeftFrom(range) && !range.toTheLeftFrom(this);
+    return this.from <= range.to && this.to >= range.from;
 };
 
 TimeRange.prototype.intersectWith = function (range) {
