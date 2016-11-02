@@ -44,19 +44,17 @@ function getTimeInMinutes(input, bankTimeZone) {
         date.minutes;
 }
 
-function findAppropriateTimeRange(allTime, desiredDuration, laterThan) {
+function findAppropriateTimeRange(allTime, desiredDuration, minutesLater) {
     var timeRange = allTime[0];
-    if (laterThan !== undefined) {
-        for (var timeRangeIndex = 1;
-            timeRangeIndex < allTime.length && timeRange.to - laterThan < desiredDuration;
-            timeRangeIndex++) {
-            timeRange = allTime[timeRangeIndex];
+    if (minutesLater && timeRange) {
+        var tmpTimeRange = TimeRange.fromAnother(timeRange);
+        tmpTimeRange.from += minutesLater;
+        if (tmpTimeRange.getDuration() >= desiredDuration) {
+            allTime[0] = tmpTimeRange;
+        } else {
+            allTime.shift();
         }
-        if (timeRange.to - laterThan < desiredDuration) {
-            return undefined;
-        }
-        laterThan = Math.max(laterThan, timeRange.from);
-        timeRange = new TimeRange(laterThan, laterThan + desiredDuration);
+        timeRange = allTime[0];
     }
 
     return timeRange;
@@ -156,7 +154,7 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
                 return false;
             }
             var nextMoment = findAppropriateTimeRange(appropriateTimeRanges,
-                duration, currentMoment.from + MINUTES_IN_HOUR / 2);
+                duration, MINUTES_IN_HOUR / 2);
             if (!nextMoment) {
                 return false;
             }

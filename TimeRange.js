@@ -7,6 +7,10 @@ function TimeRange(from, to) {
     this.to = to;
 }
 
+TimeRange.fromAnother = function (timeRange) {
+    return new TimeRange(timeRange.from, timeRange.to);
+};
+
 TimeRange.prototype.exceptTimeRange = function (other) {
     if (!this.intersectsWith(other)) {
         return [this];
