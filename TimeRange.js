@@ -1,5 +1,7 @@
 'use strict';
 
+var utils = require('./utils.js');
+
 function TimeRange(from, to) {
     this.from = from;
     this.to = to;
@@ -21,8 +23,8 @@ TimeRange.prototype.exceptTimeRange = function (other) {
 };
 
 TimeRange.prototype.exceptTimeRanges = function (others) {
-    return TimeRange.sortTimeRanges(others.reduce(function (acc, excludedTimeRange) {
-        return flatten(acc.map(function (currentTimeRange) {
+    return TimeRange.getSortedTimeRanges(others.reduce(function (acc, excludedTimeRange) {
+        return utils.flatten(acc.map(function (currentTimeRange) {
             return currentTimeRange.exceptTimeRange(excludedTimeRange);
         }));
     }, [this]));
@@ -38,7 +40,7 @@ TimeRange.prototype.intersectsWith = function (other) {
 
 TimeRange.prototype.intersect = function (other) {
     if (!this.intersectsWith(other)) {
-        return undefined;
+        return;
     }
 
     return new TimeRange(Math.max(this.from, other.from), Math.min(this.to, other.to));
@@ -52,13 +54,13 @@ TimeRange.comparator = function (a, b) {
     return a.from - b.from;
 };
 
-TimeRange.sortTimeRanges = function (timeRanges) {
+TimeRange.getSortedTimeRanges = function (timeRanges) {
     return timeRanges.concat().sort(TimeRange.comparator);
 };
 
 TimeRange.intersectTimeRanges = function (a, b) {
-    a = TimeRange.sortTimeRanges(a);
-    b = TimeRange.sortTimeRanges(b);
+    a = TimeRange.getSortedTimeRanges(a);
+    b = TimeRange.getSortedTimeRanges(b);
 
     var result = [];
     for (var i = 0, j = 0; i < a.length && j < b.length;) {
@@ -80,9 +82,5 @@ TimeRange.intersectTimeRanges = function (a, b) {
 
     return result;
 };
-
-function flatten(arrays) {
-    return [].concat.apply([], arrays);
-}
 
 module.exports = TimeRange;

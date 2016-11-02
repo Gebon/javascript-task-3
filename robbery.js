@@ -7,32 +7,41 @@
 exports.isStar = true;
 
 var TimeRange = require('./TimeRange.js');
+var utils = require('./utils.js');
 
-var TIME_REGEX = /(([А-Я]{2})\s)?(\d{2}):(\d{2})\+(\d+)/;
+var TIME_REGEX = /(?:([ПН|ВТ|СР|ЧТ|ПТ|СБ|ВС]{2})\s)?(\d{2}):(\d{2})\+(\d{1,2})/;
 var MINUTES_IN_HOUR = 60;
 var MINUTES_IN_DAY = 24 * MINUTES_IN_HOUR;
+var DAYS_OF_WEEK = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
 
-var DAY_TO_MINUTES = {
-    'ПН': 0,
-    'ВТ': MINUTES_IN_DAY,
-    'СР': 2 * MINUTES_IN_DAY,
-    'ЧТ': 3 * MINUTES_IN_DAY
-};
+function convertDayToMinutes(dayOfWeek) {
+    return DAYS_OF_WEEK.indexOf(dayOfWeek) * MINUTES_IN_DAY;
+}
 
-function parseInteger(value) {
-    return parseInt(value, 10);
+function convertHoursToMinutes(hours) {
+    return hours * MINUTES_IN_HOUR;
+}
+
+function parseDate(dateAsString) {
+    var timePattern = dateAsString.match(TIME_REGEX);
+
+    return {
+        dayOfWeek: timePattern[1],
+        hours: parseInt(timePattern[2]),
+        minutes: parseInt(timePattern[3]),
+        timeZone: parseInt(timePattern[4])
+    };
 }
 
 function getTimeInMinutes(input, bankTimeZone) {
-    var timePattern = input.match(TIME_REGEX);
-    var timeZone = parseInteger(timePattern[5]);
+    var date = parseDate(input);
     if (bankTimeZone === undefined) {
-        bankTimeZone = timeZone;
+        bankTimeZone = date.timeZone;
     }
 
-    return (DAY_TO_MINUTES[timePattern[2]] || 0) +
-        (parseInteger(timePattern[3]) + bankTimeZone - timeZone) * MINUTES_IN_HOUR +
-        parseInteger(timePattern[4]);
+    return convertDayToMinutes(date.dayOfWeek) +
+        convertHoursToMinutes(date.hours + bankTimeZone - date.timeZone) +
+        date.minutes;
 }
 
 function findAppropriateTimeRange(allTime, desiredDuration, laterThan) {
@@ -53,12 +62,8 @@ function findAppropriateTimeRange(allTime, desiredDuration, laterThan) {
     return timeRange;
 }
 
-function normalizeTime(time) {
+function formatNumber(time) {
     return (time < 10 ? '0' : '') + time;
-}
-
-function flatten(arrays) {
-    return [].concat.apply([], arrays);
 }
 
 /**
@@ -67,7 +72,7 @@ function flatten(arrays) {
  * @returns {Array<Number>} - Времена, когда Банда занята
  */
 function getBusyTimeRanges(schedule, bankTimeZone) {
-    return flatten(Object.keys(schedule).map(function (key) {
+    return utils.flatten(Object.keys(schedule).map(function (key) {
         return schedule[key].map(function (interval) {
             return new TimeRange(getTimeInMinutes(interval.from, bankTimeZone),
                 getTimeInMinutes(interval.to, bankTimeZone));
@@ -79,8 +84,9 @@ function getBankWorkingTimeRanges(workingHours) {
     var from = getTimeInMinutes(workingHours.from);
     var to = getTimeInMinutes(workingHours.to);
 
-    return Object.keys(DAY_TO_MINUTES).map(function (day) {
-        return new TimeRange(DAY_TO_MINUTES[day] + from, DAY_TO_MINUTES[day] + to);
+    return DAYS_OF_WEEK.map(function (dayOfWeek) {
+        return new TimeRange(convertDayToMinutes(dayOfWeek) + from,
+            convertDayToMinutes(dayOfWeek) + to);
     });
 }
 
@@ -93,9 +99,9 @@ function getBankWorkingTimeRanges(workingHours) {
  * @returns {Object}
  */
 exports.getAppropriateMoment = function (schedule, duration, workingHours) {
-    var bankTimeZone = parseInteger(workingHours.from.match(TIME_REGEX)[5]);
+    var bankTimeZone = parseInt(workingHours.from.match(TIME_REGEX)[4]);
 
-    var allTimeRange = new TimeRange(DAY_TO_MINUTES['ПН'], DAY_TO_MINUTES['ЧТ']);
+    var allTimeRange = new TimeRange(convertDayToMinutes('ПН'), convertDayToMinutes('ЧТ'));
     var availableTimeRanges = TimeRange.intersectTimeRanges(
         allTimeRange.exceptTimeRanges(getBusyTimeRanges(schedule, bankTimeZone)),
         getBankWorkingTimeRanges(workingHours)
@@ -129,14 +135,15 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             if (!this.exists()) {
                 return '';
             }
-            var hours = normalizeTime(parseInteger((currentMoment.from % MINUTES_IN_DAY) /
+            var dayOfWeek = DAYS_OF_WEEK[Math.floor(currentMoment.from / MINUTES_IN_DAY)];
+            var hours = formatNumber(Math.floor((currentMoment.from % MINUTES_IN_DAY) /
                 MINUTES_IN_HOUR));
-            var minutes = normalizeTime(currentMoment.from % MINUTES_IN_HOUR);
+            var minutes = formatNumber(currentMoment.from % MINUTES_IN_HOUR);
 
-            return template.replace('%HH', hours)
+            return template
+                .replace('%HH', hours)
                 .replace('%MM', minutes)
-                .replace('%DD',
-                    Object.keys(DAY_TO_MINUTES)[parseInteger(currentMoment.from / MINUTES_IN_DAY)]);
+                .replace('%DD', dayOfWeek);
         },
 
         /**
@@ -150,7 +157,7 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             }
             var nextMoment = findAppropriateTimeRange(appropriateTimeRanges,
                 duration, currentMoment.from + MINUTES_IN_HOUR / 2);
-            if (nextMoment === undefined) {
+            if (!nextMoment) {
                 return false;
             }
             currentMoment = nextMoment;
