@@ -49,7 +49,7 @@ function findAppropriateTimeRange(allTime, desiredDuration, minutesLater) {
     if (minutesLater && timeRange) {
         var tmpTimeRange = TimeRange.fromAnother(timeRange);
         tmpTimeRange.from += minutesLater;
-        if (tmpTimeRange.getDuration() >= desiredDuration) {
+        if (tmpTimeRange.duration >= desiredDuration) {
             allTime[0] = tmpTimeRange;
         } else {
             allTime.shift();
@@ -106,7 +106,7 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
     );
     var appropriateTimeRanges = TimeRange.getSortedTimeRanges(availableTimeRanges
         .filter(function (timeRange) {
-            return timeRange.getDuration() >= duration;
+            return timeRange.duration >= duration;
         }));
 
     var currentMoment = findAppropriateTimeRange(appropriateTimeRanges, duration);
