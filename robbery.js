@@ -97,18 +97,17 @@ function getBankWorkingTimeRanges(workingHours) {
  * @returns {Object}
  */
 exports.getAppropriateMoment = function (schedule, duration, workingHours) {
-    var bankTimeZone = parseInt(workingHours.from.match(TIME_REGEX)[4]);
+    var bankTimeZone = parseDate(workingHours.from).timeZone;
 
     var allTimeRange = new TimeRange(convertDayToMinutes('ПН'), convertDayToMinutes('ЧТ'));
     var availableTimeRanges = TimeRange.intersectTimeRanges(
         allTimeRange.exceptTimeRanges(getBusyTimeRanges(schedule, bankTimeZone)),
         getBankWorkingTimeRanges(workingHours)
     );
-    var appropriateTimeRanges = availableTimeRanges
+    var appropriateTimeRanges = TimeRange.getSortedTimeRanges(availableTimeRanges
         .filter(function (timeRange) {
             return timeRange.getDuration() >= duration;
-        })
-        .sort(TimeRange.comparator);
+        }));
 
     var currentMoment = findAppropriateTimeRange(appropriateTimeRanges, duration);
 
